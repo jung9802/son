@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>자동 이미지 태그 생성기</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;
+            height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            gap: 20px;
+        }
+        .left-panel {
+            width: 400px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-y: auto;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        .left-panel h2 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+        .left-panel input,
+        .left-panel textarea,
+        .left-panel select {
+            width: 100%;
+            margin-bottom: 12px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .left-panel button {
+            margin-top: 10px;
+            padding: 10px;
+            width: 100%;
+            font-size: 14px;
+            background-color: #2d8cf0;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .left-panel button:hover {
+            background-color: #1e6fd9;
+        }
+        .preview-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        .preview-area img {
+            max-width: 100%;
+            margin-bottom: 10px;
+        }
+        .select-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 4px;
+        }
+        .select-container select {
+            flex-grow: 1;
+            height: 36px;
+            margin: 0;
+        }
+        .select-container button {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="left-panel">
+        <h2>🧩 이미지 태그 생성기</h2>
+        <input type="text" id="baseUrl" placeholder="기본 이미지 URL (예: .../01.jpg)">
+        시작 번호: <input type="number" id="startNum" value="1">
+        끝 번호: <input type="number" id="endNum" value="30">
+        gif 번호 (예: 2,4,6): <input type="text" id="gifNums" placeholder="예: 2,4,6">
+        <h3>📌 추가 이미지 선택</h3>
+        <div id="extraSelects" ondragover="event.preventDefault()"></div>
+        <button onclick="generateTags()">🖼 이미지 태그 만들기</button>
+        <button onclick="copyResult()">📋 복사하기</button>
+        <textarea id="result" rows="10" readonly></textarea>
+    </div>
+    <div class="preview-area" id="previewArea">
+        <h3>미리보기</h3>
+        <p style="font-size: 14px; color: gray;">이미지를 생성하면 이곳에 미리보기로 표시됩니다.</p>
+    </div>
+</div>
+<script>
+    const extraImages = [];
+    function addSelect(autoAppend = true) {
+        const container = document.getElementById('extraSelects');
+        const wrapper = document.createElement('div');
+        wrapper.className = 'select-container';
+        const select = document.createElement('select');
+        select.innerHTML = '<option value="">-- 필수 표기사항 이미지 선택 --</option>';
+        extraImages.forEach(img => {
+            const option = document.createElement('option');
+            option.value = img.url;
+            option.text = img.name;
+            select.appendChild(option);
+        });
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = '×';
+        removeBtn.onclick = () => {
+            if (container.children.length > 1) wrapper.remove();
+        };
+        select.addEventListener('change', function () {
+            const selected = [...document.querySelectorAll('#extraSelects select')]
+                .filter(s => s !== this)
+                .map(s => s.value);
+            if (selected.includes(this.value)) {
+                alert('이미 선택한 이미지입니다.');
+                this.value = '';
+            } else if (this.value && autoAppend) {
+                addSelect();
+            }
+        });
+        wrapper.appendChild(select);
+        wrapper.appendChild(removeBtn);
+        container.appendChild(wrapper);
+    }
+    function generateTags() {
+        const baseUrl = document.getElementById('baseUrl').value;
+        const startNum = parseInt(document.getElementById('startNum').value);
+        const endNum = parseInt(document.getElementById('endNum').value);
+        const gifNums = document.getElementById('gifNums').value.split(',').map(n => parseInt(n.trim()));
+        let result = '';
+        let previewHTML = '';
+        for (let i = startNum; i <= endNum; i++) {
+            const num = i.toString().padStart(2, '0');
+            let url = baseUrl.replace('01.jpg', num + '.jpg');
+            if (gifNums.includes(i)) url = url.replace('.jpg', '.gif');
+            const tag = `<img src="${url}" onerror="this.style.border='2px solid red'; this.outerHTML='<div style=\'width:100%;padding:20px;background:black;color:yellow;text-align:center;\'>${i}번 이미지를 불러올 수 없습니다</div>'" style="display: block; vertical-align: top; margin: 0px auto; text-align: center;">
+`;
+            result += tag;
+            previewHTML += tag;
+        }
+        document.getElementById('result').value = result;
+        document.getElementById('previewArea').innerHTML = '<h3>미리보기</h3>' + previewHTML;
+    }
+    function copyResult() {
+        const result = document.getElementById('result');
+        result.select();
+        document.execCommand('copy');
+        alert('복사되었습니다!');
+    }
+    window.onload = () => addSelect();
+</script>
+</body>
+</html>
